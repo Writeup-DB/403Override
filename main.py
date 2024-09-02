@@ -156,7 +156,7 @@ class Query:
         method, path, headers, status, size, _ = result
         return {
             "method": method,
-            "path": path,
+            "path": self.url+path,
             "headers": headers if headers else None,
             "status": status,
             "size": size
@@ -164,7 +164,9 @@ class Query:
 
     async def run(self):
         tasks = []
-        print(f"\n{(' Target URL: ' + self.url + ' ').center(121, '=')}")
+
+        print(f"\n{(' Target URL: ' + self.url + ' ').center(41, '=')}")
+        print("="*50)
         
         # Initial POST request
         tasks.append(self.send_request('POST', self.path_repo.path))
@@ -198,6 +200,8 @@ class Query:
             if self.output_format == "json":
                 json_data = json.dumps(self.results, indent=4)
                 await file.write(json_data)
+                print("Result saved in : "+ filename)
+
             else:
                 for line in self.results:
                     await file.write(line + "\n")
