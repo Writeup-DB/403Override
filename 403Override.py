@@ -185,43 +185,31 @@ class Query:
         for path in self.path_repo.new_paths:
             tasks.append(self.send_request('GET', path))
         
-        # Header manipulations
-        for headers in self.path_repo.new_headers:
-            tasks.append(self.send_request('GET', self.path_repo.path, headers=headers))
-        
-        responses = await asyncio.gather(*tasks)
+        # Headers manipulations
+        for header in self.path_repo.new_headers:
+            for key, value in header.items():
+                tasks.append(self.send_request('GET', self.path_repo.path, headers={key: value}))
 
-        # Log and display results
-        if self.output_format == "json":
-            self.results = [self.format_json(result) for result in responses if result]
-        elif self.output_format == "csv":
-            self.results = [self.format_csv(result) for result in responses if result]
-        else:
-            for result in responses:
-                if result:
-                    formatted_output = self.format_output(result)
-                    print(formatted_output)
-                    self.results.append(formatted_output)
-
-        # Write results to file
+        results = await asyncio.gather(*tasks)
+        self.results = [result for result in results if result]
         await self.write_to_file()
 
     async def write_to_file(self):
         filename = f"{self.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{self.output_format}"
-        async with aio_open(filename, "w") as file:
+        async with aio_open(filename, mode="w") as file:
             if self.output_format == "json":
-                json_data = json.dumps(self.results, indent=4)
+                json_data = json.dumps([self.format_json(result) for result in self.results], indent=4)
                 await file.write(json_data)
                 logging.info(f"Result saved in: {filename}")
 
             elif self.output_format == "csv":
                 writer = csv.writer(await file)
                 writer.writerow(["Method", "URL", "Headers", "Status", "Size"])
-                writer.writerows(self.results)
+                writer.writerows([self.format_csv(result) for result in self.results])
                 logging.info(f"Result saved in: {filename}")
 
             else:
-                for line in self.results:
+                for line in [self.format_output(result) for result in self.results]:
                     await file.write(line + "\n")
                 logging.info(f"Result saved in: {filename}")
 
@@ -244,7 +232,6 @@ class Program:
         async with aiohttp.ClientSession() as session:
             tasks = [sem_task(url, dir) for url in self.urls for dir in self.dirs]
             await asyncio.gather(*tasks)
-
 
 if __name__ == "__main__":
     try:
