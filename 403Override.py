@@ -102,8 +102,8 @@ class PathRepository:
 
     def create_new_headers(self):
         headers_overwrite = ["X-Original-URL", "X-Rewrite-URL"]
-        headers = ["X-Custom-IP-Authorization", "X-Forwarded-For","X-Forward-For", "X-Remote-IP", "X-Originating-IP","X-Remote-Addr", "X-Client-IP", "X-Real-IP","X-Original-URL","X-Host", "Referer"]
-
+        headers = ["X-Custom-IP-Authorization", "X-Forwarded-For","X-Forward-For", "X-Remote-IP", "X-Originating-IP","X-Remote-Addr", "X-Client-IP", "X-Real-IP","X-Original-URL","X-Host", "Referer", "X-ProxyUser-Ip", "Client-IP", "True-Client-IP", "Cluster-Client-IP" ]
+        
         values = ["localhost", "localhost:80", "localhost:443","127.0.0.1", "127.0.0.1:80", "127.0.0.1:443","2130706433", "0x7F000001", "0177.0000.0000.0001","0", "127.1", "10.0.0.0", "10.0.0.1", "172.16.0.0","172.16.0.1", "192.168.1.0", "192.168.1.1","0177.0.0.1","127.0.1","169.254-169.254"]
 
         new_headers = [{header: value} for header in headers for value in values]
