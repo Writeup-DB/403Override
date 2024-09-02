@@ -7,29 +7,34 @@ import tldextract
 import asyncio
 import aiohttp
 import json
+import csv
 from colorama import init, Fore, Style
 from pyfiglet import Figlet
 from aiofiles import open as aio_open
 from datetime import datetime
+import logging
+from tabulate import tabulate
 
 # Initialize Colorama
 init()
 
-# Display Banner -- Start
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Display Banner
 custom_fig = Figlet(font='slant')
 print(Fore.BLUE + Style.BRIGHT + custom_fig.renderText('403Override') + Style.RESET_ALL)
 print(Fore.GREEN + Style.BRIGHT + "____________________ Version 1.0.1 ____________________\n")
-# Display Banner -- End
 
-# Handle Arguments -- Start
+# Handle Arguments
 parser = argparse.ArgumentParser(description="403Override Scanner")
 parser.add_argument("-u", "--url", type=str, help="Single URL to scan, ex: http://example.com")
 parser.add_argument("-U", "--urllist", type=str, help="Path to list of URLs, ex: urllist.txt")
 parser.add_argument("-d", "--dir", type=str, help="Single directory to scan, ex: /admin", nargs="?", const="/")
 parser.add_argument("-D", "--dirlist", type=str, help="Path to list of directories, ex: dirlist.txt")
-parser.add_argument("-o", "--output", type=str, help="Output format: text (default) or json", default="text")
+parser.add_argument("-o", "--output", type=str, help="Output format: text (default), json, or csv", default="text")
+parser.add_argument("-t", "--threads", type=int, help="Number of concurrent requests (default: 10)", default=10)
 args = parser.parse_args()
-# Handle Arguments -- End
 
 class Arguments:
     def __init__(self, url, urllist, dir, dirlist):
@@ -40,6 +45,7 @@ class Arguments:
         self.output_format = args.output.lower()
         self.urls = []
         self.dirs = []
+        self.concurrency_limit = args.threads
 
         self.check_url()
         self.check_dir()
@@ -47,20 +53,20 @@ class Arguments:
     def check_url(self):
         if self.url:
             if not validators.url(self.url):
-                print(Fore.RED + "You must specify a valid URL for -u (--url) argument! Exiting...\n" + Style.RESET_ALL)
+                logging.error("You must specify a valid URL for -u (--url) argument! Exiting...")
                 sys.exit(1)
 
             self.url = self.url.rstrip("/")
             self.urls.append(self.url)
         elif self.urllist:
             if not os.path.exists(self.urllist):
-                print(Fore.RED + "The specified path to URL list does not exist! Exiting...\n" + Style.RESET_ALL)
+                logging.error("The specified path to URL list does not exist! Exiting...")
                 sys.exit(1)
 
             with open(self.urllist, 'r') as file:
                 self.urls = [line.strip() for line in file if validators.url(line.strip())]
         else:
-            print(Fore.RED + "Please provide a single URL or a list of URLs! (-u or -U)\n" + Style.RESET_ALL)
+            logging.error("Please provide a single URL or a list of URLs! (-u or -U)")
             sys.exit(1)
 
     def check_dir(self):
@@ -69,7 +75,7 @@ class Arguments:
             self.dirs.append(self.dir)
         elif self.dirlist:
             if not os.path.exists(self.dirlist):
-                print(Fore.RED + "The specified path to directory list does not exist! Exiting...\n" + Style.RESET_ALL)
+                logging.error("The specified path to directory list does not exist! Exiting...")
                 sys.exit(1)
 
             with open(self.dirlist, 'r') as file:
@@ -128,8 +134,8 @@ class Query:
                 size = len(await response.read())
                 colour = self.get_status_colour(status)
                 return (method, path, headers, status, size, colour)
-        except Exception as e:
-            print(Fore.RED + f"Request failed: {e}" + Style.RESET_ALL)
+        except aiohttp.ClientError as e:
+            logging.error(f"Request failed: {e}")
             return None
 
     def get_status_colour(self, status_code):
@@ -163,11 +169,14 @@ class Query:
             "size": size
         }
 
+    def format_csv(self, result):
+        method, path, headers, status, size, _ = result
+        return [method, self.url + path, headers if headers else '', status, size]
+
     async def run(self):
         tasks = []
 
-        print(f"\n{(' Target URL: ' + self.url + ' ').center(41, '=')}")
-        print("="*50)
+        logging.info(f"Target URL: {self.url}")
         
         # Initial POST request
         tasks.append(self.send_request('POST', self.path_repo.path))
@@ -183,53 +192,68 @@ class Query:
         responses = await asyncio.gather(*tasks)
 
         # Log and display results
-        for result in responses:
-            if result:
-                if self.output_format == "json":
-                    self.results.append(self.format_json(result))
-                else:
+        if self.output_format == "json":
+            self.results = [self.format_json(result) for result in responses if result]
+        elif self.output_format == "csv":
+            self.results = [self.format_csv(result) for result in responses if result]
+        else:
+            for result in responses:
+                if result:
                     formatted_output = self.format_output(result)
                     print(formatted_output)
                     self.results.append(formatted_output)
-        
+
         # Write results to file
         await self.write_to_file()
 
     async def write_to_file(self):
         filename = f"{self.domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{self.output_format}"
-        async with aio_open(filename, "a") as file:
+        async with aio_open(filename, "w") as file:
             if self.output_format == "json":
                 json_data = json.dumps(self.results, indent=4)
                 await file.write(json_data)
-                print("Result saved in : "+ filename)
+                logging.info(f"Result saved in: {filename}")
+
+            elif self.output_format == "csv":
+                writer = csv.writer(await file)
+                writer.writerow(["Method", "URL", "Headers", "Status", "Size"])
+                writer.writerows(self.results)
+                logging.info(f"Result saved in: {filename}")
 
             else:
                 for line in self.results:
                     await file.write(line + "\n")
+                logging.info(f"Result saved in: {filename}")
 
 class Program:
-    def __init__(self, urls, dirs, output_format):
+    def __init__(self, urls, dirs, output_format, concurrency_limit):
         self.urls = urls
         self.dirs = dirs
         self.output_format = output_format
+        self.concurrency_limit = concurrency_limit
 
     async def initialise(self):
+        semaphore = asyncio.Semaphore(self.concurrency_limit)
+        
+        async def sem_task(url, dir):
+            async with semaphore:
+                path_repo = PathRepository(dir)
+                query = Query(url, path_repo, session, self.output_format)
+                await query.run()
+        
         async with aiohttp.ClientSession() as session:
-            for url in self.urls:
-                for dir in self.dirs:
-                    path_repo = PathRepository(dir)
-                    query = Query(url, path_repo, session, self.output_format)
-                    await query.run()
+            tasks = [sem_task(url, dir) for url in self.urls for dir in self.dirs]
+            await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":
     try:
         arguments = Arguments(args.url, args.urllist, args.dir, args.dirlist)
-        program = Program(arguments.urls, arguments.dirs, arguments.output_format)
+        program = Program(arguments.urls, arguments.dirs, arguments.output_format, arguments.concurrency_limit)
         asyncio.run(program.initialise())
     except KeyboardInterrupt:
-        print(Fore.RED + "\nProcess interrupted by user. Exiting...\n" + Style.RESET_ALL)
+        logging.info("Process interrupted by user. Exiting...")
         sys.exit(0)
     except Exception as e:
-        print(Fore.RED + f"\nAn unexpected error occurred: {e}\n" + Style.RESET_ALL)
+        logging.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
