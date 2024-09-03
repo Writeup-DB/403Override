@@ -34,15 +34,25 @@ Command-Line Arguments
 - -o or --output: Specify the output format. Use txt for text format (default) or json for JSON format.
 
 ## Examples
-1. Scan a single URL and directory:
+1. Scan a single URL:
+```bash
+python 403bypasser.py -u http://example.com
+```
+![image](https://github.com/user-attachments/assets/08a3e088-413f-4f7e-93cb-d29b44abad1e)
+
+![image](https://github.com/user-attachments/assets/db08db75-fa04-475b-aae7-7b5a483d253c)
+
+
+2. Scan a single URL and directory:
 ```bash
 python 403bypasser.py -u http://example.com -d /admin
 ```
 
-2. Scan multiple URLs and directories from files:
+3. Scan multiple URLs and directories from files:
 ```bash
 python 403bypasser.py -U urllist.txt -D dirlist.txt -o json
 ```
+
 
 
 ## Disclaimer
