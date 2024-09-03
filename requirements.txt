@@ -5,3 +5,5 @@ tldextract
 colorama
 pyfiglet
 prettytable
+asyncio
+aiohttp
