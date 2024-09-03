@@ -7,4 +7,3 @@ pyfiglet
 prettytable
 asyncio
 aiohttp
-aio_open
