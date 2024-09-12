@@ -53,6 +53,8 @@ python 403bypasser.py -u http://example.com -d /admin
 python 403bypasser.py -U urllist.txt -D dirlist.txt -o json
 ```
 
+## Initiative By [Securityium](https://www.securityium.com/)
+![image](https://github.com/user-attachments/assets/c40d3572-c9f1-42ae-b78c-151c748b24c6)
 
 
 ## Disclaimer
