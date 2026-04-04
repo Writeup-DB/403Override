@@ -7,3 +7,7 @@ pyfiglet
 prettytable
 asyncio
 aiohttp
+aiofiles
+rich
+jinja2
+aiohttp_proxy
